@@ -1,60 +1,137 @@
-# jQuery
+# Compiler Visualizer
 
-> jQuery is a fast, small, and feature-rich JavaScript library.
+A web-based compiler toolkit that demonstrates core concepts of compiler design, including lexical analysis, LL(1) parsing, and LR(1) parsing with DFA visualization.
 
-For information on how to get started and how to use jQuery, please see [jQuery's documentation](https://api.jquery.com/).
-For source files and issues, please visit the [jQuery repo](https://github.com/jquery/jquery).
+---
 
-If upgrading, please see the [blog post for 3.7.1](https://blog.jquery.com/2023/08/28/jquery-3-7-1-released-reliable-table-row-dimensions/). This includes notable differences from the previous version and a more readable changelog.
+## 🚀 Features
 
-## Including jQuery
+### 🔹 Lexical Analyzer
 
-Below are some of the most common ways to include jQuery.
+* Tokenizes input source code (subset of C language)
+* Identifies:
 
-### Browser
+  * Keywords
+  * Identifiers
+  * Operators
+  * Delimiters
+  * Numbers
+  * Strings and characters
+  * Comments
+* Maintains symbol tables for identifiers and constants
+* Outputs structured token data in JSON format
 
-#### Script tag
+---
 
-```html
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+### 🔹 LL(1) Parser
+
+* Constructs FIRST and FOLLOW sets
+* Builds predictive parsing table
+* Performs top-down parsing using stack-based approach
+* Displays:
+
+  * Parsing steps
+  * Parse table
+  * Parse tree visualization
+
+---
+
+### 🔹 LR(1) Parser
+
+* Implements bottom-up parsing (shift-reduce parsing)
+* Builds canonical collection of LR(1) items
+* Generates ACTION and GOTO tables
+* Supports:
+
+  * DFA-based state transitions
+  * Conflict handling
+* Provides step-by-step parsing visualization
+
+---
+
+### 🔹 DFA Visualization
+
+* Generates DFA graphs for LR(1) item sets
+* Uses Graphviz (DOT format) for rendering
+* Supports:
+
+  * Web visualization
+  * Export as PDF
+
+---
+
+## 🧠 Architecture
+
+```
+Frontend (HTML + JavaScript)
+        ↓
+PHP Backend (API layer)
+        ↓
+C++ Core Engine (Lexer + Parsers)
+        ↓
+JSON Output → UI Rendering
 ```
 
-#### Webpack / Browserify / Babel
+---
 
-There are several ways to use [Webpack](https://webpack.js.org/), [Browserify](http://browserify.org/) or [Babel](https://babeljs.io/). For more information on using these tools, please refer to the corresponding project's documentation. In the script, including jQuery will usually look like this:
+## ⚙️ Tech Stack
 
-```js
-import $ from "jquery";
+* **C++** → Core compiler logic
+* **PHP** → Backend communication
+* **HTML/CSS/JavaScript** → Frontend UI
+* **Graphviz** → DFA visualization
+
+---
+
+## 📌 Key Concepts Implemented
+
+* Tokenization using finite automata
+* FIRST & FOLLOW set computation
+* Predictive parsing (LL(1))
+* Shift-reduce parsing (LR(1))
+* DFA construction for LR parsing
+* Stack-based parsing simulation
+
+---
+
+## ▶️ How to Run
+
+1. Compile C++ modules:
+
+```
+make
 ```
 
-If you need to use jQuery in a file that's not an ECMAScript module, you can use the CommonJS syntax:
+2. Start a local server (e.g., Apache / PHP server)
 
-```js
-var $ = require( "jquery" );
+3. Open the main page in browser:
+
+```
+http://localhost/
 ```
 
-#### AMD (Asynchronous Module Definition)
+---
 
-AMD is a module format built for the browser. For more information, we recommend [require.js' documentation](https://requirejs.org/docs/whyamd.html).
+## 🎯 Learning Outcomes
 
-```js
-define( [ "jquery" ], function( $ ) {
+This project demonstrates:
 
-} );
-```
+* Understanding of compiler design fundamentals
+* Implementation of parsing algorithms
+* Integration of multiple technologies (C++, PHP, JS)
+* Visualization of complex theoretical concepts
 
-### Node
+---
 
-To include jQuery in [Node](https://nodejs.org/), first install with npm.
+## 📷 Demo
 
-```sh
-npm install jquery
-```
+* Lexical Analyzer
+* LL(1) Parser
+* LR(1) Parser
+* DFA Graph Visualization
 
-For jQuery to work in Node, a window with a document is required. Since no such window exists natively in Node, one can be mocked by tools such as [jsdom](https://github.com/jsdom/jsdom). This can be useful for testing purposes.
+---
 
-```js
-const { JSDOM } = require( "jsdom" );
-const { window } = new JSDOM( "" );
-const $ = require( "jquery" )( window );
-```
+## 📌 Note
+
+This project is built for educational purposes to explore compiler design concepts and their practical implementation.

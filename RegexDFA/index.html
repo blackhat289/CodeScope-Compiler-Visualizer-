@@ -1,0 +1,498 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Regex → DFA Converter</title>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<link href="../node_modules/semantic-ui-css/semantic.min.css" rel="stylesheet">
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				background: #f5f7fa;
+				min-height: 100vh;
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			}
+			.page-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 1.5em 0;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+				margin-bottom: 2em;
+			}
+			.page-header h1 {
+				font-size: 2em;
+				font-weight: 700;
+				margin: 0;
+			}
+			.page-header .sub {
+				font-weight: 300;
+				opacity: 0.9;
+				margin-top: 0.3em;
+			}
+			.segment-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 0.8em 1.5em;
+				border-radius: 6px 6px 0 0;
+				font-weight: 600;
+				margin-bottom: 0;
+			}
+			.segment-header.nfa-header {
+				background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+			}
+			.segment-header.dfa-header {
+				background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+			}
+			.segment-header.min-header {
+				background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+			}
+			.segment-header.match-header {
+				background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+			}
+			.ui.segment {
+				border-radius: 8px;
+				border: none;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			}
+			.ui.button {
+				border-radius: 6px;
+				font-weight: 600;
+			}
+			.ui.positive.button {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				border: none;
+			}
+			.ui.table {
+				border-radius: 6px;
+				margin-bottom: 0;
+				font-size: 0.85em;
+			}
+			.ui.table thead tr {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+			}
+			.ui.table thead th {
+				color: white !important;
+				font-weight: 600;
+				border-color: rgba(255,255,255,0.2);
+			}
+			.ui.table tbody tr:hover {
+				background-color: #f0f0f0;
+			}
+			.ui.form .field > label {
+				font-weight: 600;
+				color: #333;
+			}
+			input, textarea, select {
+				border-radius: 6px !important;
+				border: 1px solid #ddd !important;
+			}
+			input:focus, textarea:focus, select:focus {
+				border-color: #667eea !important;
+				box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+			}
+			.graph-container {
+				overflow-x: auto;
+				min-height: 150px;
+				padding: 1em;
+				background: white;
+				text-align: center;
+			}
+			.graph-container svg {
+				max-width: 100%;
+				height: auto;
+			}
+			.tab-content {
+				display: none;
+			}
+			.tab-content.active {
+				display: block;
+			}
+			.custom-tabs {
+				display: flex;
+				gap: 0;
+				margin-bottom: 0;
+			}
+			.custom-tab {
+				padding: 0.8em 1.5em;
+				cursor: pointer;
+				font-weight: 600;
+				font-size: 0.95em;
+				color: #666;
+				border-bottom: 3px solid transparent;
+				transition: all 0.2s ease;
+				background: #f8f9fa;
+				flex: 1;
+				text-align: center;
+			}
+			.custom-tab:hover {
+				background: #eee;
+			}
+			.custom-tab.active {
+				color: #667eea;
+				border-bottom-color: #667eea;
+				background: white;
+			}
+			.custom-tab.nfa-tab.active { color: #f5576c; border-bottom-color: #f5576c; }
+			.custom-tab.dfa-tab.active { color: #4facfe; border-bottom-color: #4facfe; }
+			.custom-tab.min-tab.active { color: #43e97b; border-bottom-color: #43e97b; }
+			.stats-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 1em;
+				margin-bottom: 1.5em;
+			}
+			.stat-card {
+				background: white;
+				border-radius: 8px;
+				padding: 1.2em;
+				text-align: center;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			}
+			.stat-card .stat-value {
+				font-size: 2em;
+				font-weight: 700;
+				color: #667eea;
+			}
+			.stat-card .stat-label {
+				font-size: 0.85em;
+				color: #888;
+				margin-top: 0.3em;
+			}
+			.stat-card.nfa-stat .stat-value { color: #f5576c; }
+			.stat-card.dfa-stat .stat-value { color: #4facfe; }
+			.stat-card.min-stat .stat-value { color: #43e97b; }
+			.match-result {
+				padding: 1em 1.5em;
+				border-radius: 6px;
+				font-weight: 600;
+				font-size: 1.1em;
+				text-align: center;
+				margin-bottom: 1em;
+			}
+			.match-result.accepted {
+				background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+				color: #2e7d32;
+			}
+			.match-result.rejected {
+				background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+				color: #c62828;
+			}
+			.match-result.empty {
+				background: #e0e0e0;
+				color: #666;
+			}
+			.ui.inverted.dimmer {
+				border-radius: 8px;
+			}
+			.scrollable-table {
+				max-height: 400px;
+				overflow-y: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page-header">
+			<div class="ui container">
+				<h1 style="margin:0;"><i class="random icon"></i>Regex → DFA Converter</h1>
+				<div class="sub">Thompson's Construction • Subset Construction • Hopcroft's Minimization</div>
+			</div>
+		</div>
+
+		<div class="ui container" style="margin-top: 2em;">
+			<!-- Input Panel -->
+			<div class="ui segment" style="margin-bottom: 2em;">
+				<div class="segment-header">
+					<i class="edit icon"></i>Input
+				</div>
+				<div class="ui form" style="padding: 1.5em;">
+					<div class="three fields">
+						<div class="field">
+							<label for="selectRegex"><i class="list icon"></i>Sample Regex</label>
+							<select class="ui dropdown fluid" id="selectRegex"></select>
+						</div>
+						<div class="field">
+							<label for="regexInput"><i class="code icon"></i>Regular Expression</label>
+							<input type="text" id="regexInput" placeholder="e.g. (a|b)*abb">
+						</div>
+						<div class="field">
+							<label for="testInput"><i class="keyboard icon"></i>Test String</label>
+							<div class="ui action input">
+								<input type="text" id="testInput" placeholder="e.g. aabb">
+								<button class="ui positive button" id="submitBtn">
+									<i class="play icon"></i>Visualize
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Stats Cards -->
+			<div class="stats-grid" id="statsGrid" style="display:none;">
+				<div class="stat-card nfa-stat">
+					<div class="stat-value" id="nfaStates">-</div>
+					<div class="stat-label">NFA States</div>
+				</div>
+				<div class="stat-card dfa-stat">
+					<div class="stat-value" id="dfaStates">-</div>
+					<div class="stat-label">DFA States</div>
+				</div>
+				<div class="stat-card min-stat">
+					<div class="stat-value" id="minStates">-</div>
+					<div class="stat-label">Minimized DFA States</div>
+				</div>
+			</div>
+
+			<!-- Graph Tabs -->
+			<div class="ui segment" style="margin-bottom: 2em; padding: 0; overflow: hidden;">
+				<div class="custom-tabs">
+					<div class="custom-tab nfa-tab active" data-tab="nfa">
+						<i class="share alternate icon"></i> NFA (Thompson's)
+					</div>
+					<div class="custom-tab dfa-tab" data-tab="dfa">
+						<i class="project diagram icon"></i> DFA (Subset)
+					</div>
+					<div class="custom-tab min-tab" data-tab="min">
+						<i class="compress icon"></i> Minimized DFA
+					</div>
+				</div>
+				<div class="tab-content active" id="tab-nfa">
+					<div class="graph-container" id="nfaGraph">
+						<div class="ui placeholder segment" style="border:none;box-shadow:none;">
+							<div class="ui icon header" style="color:#ccc;">
+								<i class="share alternate icon"></i>
+								Enter a regex and click Visualize
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="tab-content" id="tab-dfa">
+					<div class="graph-container" id="dfaGraph"></div>
+				</div>
+				<div class="tab-content" id="tab-min">
+					<div class="graph-container" id="minGraph"></div>
+				</div>
+			</div>
+
+			<!-- Two column: Tables + Matching -->
+			<div class="ui two column stackable grid" style="margin-bottom: 2em;">
+				<!-- Transition Tables -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment" style="padding: 0; overflow: hidden;">
+						<div class="segment-header dfa-header">
+							<i class="table icon"></i>Transition Tables
+						</div>
+						<div class="custom-tabs" style="border-bottom: 1px solid #eee;">
+							<div class="custom-tab active" data-tabgroup="table" data-tab="table-nfa">NFA</div>
+							<div class="custom-tab" data-tabgroup="table" data-tab="table-dfa">DFA</div>
+							<div class="custom-tab" data-tabgroup="table" data-tab="table-min">Min DFA</div>
+						</div>
+						<div class="tab-content active" id="tab-table-nfa">
+							<div class="scrollable-table" style="padding: 1em;">
+								<table class="ui very compact striped celled table">
+									<thead><tr><th>From</th><th>Symbol</th><th>To</th></tr></thead>
+									<tbody id="nfaTableBody"></tbody>
+								</table>
+							</div>
+						</div>
+						<div class="tab-content" id="tab-table-dfa">
+							<div class="scrollable-table" style="padding: 1em;">
+								<table class="ui very compact striped celled table" id="dfaTable"></table>
+							</div>
+						</div>
+						<div class="tab-content" id="tab-table-min">
+							<div class="scrollable-table" style="padding: 1em;">
+								<table class="ui very compact striped celled table" id="minTable"></table>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- String Matching -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment" style="padding: 0; overflow: hidden;">
+						<div class="segment-header match-header">
+							<i class="search icon"></i>String Matching
+						</div>
+						<div style="padding: 1.5em;">
+							<div class="match-result empty" id="matchResult">
+								<i class="info circle icon"></i> Enter a test string and click Visualize
+							</div>
+							<div class="scrollable-table">
+								<table class="ui very compact striped celled table">
+									<thead>
+										<tr>
+											<th>Step</th>
+											<th>State</th>
+											<th>Input</th>
+											<th>Read</th>
+											<th>Next State</th>
+										</tr>
+									</thead>
+									<tbody id="matchTableBody"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="../node_modules/semantic-ui-css/semantic.min.js"></script>
+		<script src="../node_modules/viz.js/viz.js"></script>
+
+		<script>
+			function renderTable(tableData) {
+				if (!tableData || tableData.length === 0) return '';
+				let html = '<thead><tr>';
+				tableData[0].forEach(h => html += `<th>${h}</th>`);
+				html += '</tr></thead><tbody>';
+				for (let i = 1; i < tableData.length; i++) {
+					html += '<tr>';
+					tableData[i].forEach((cell, j) => {
+						html += j === 0 ? `<td><strong>${cell}</strong></td>` : `<td>${cell}</td>`;
+					});
+					html += '</tr>';
+				}
+				html += '</tbody>';
+				return html;
+			}
+
+			function update() {
+				let regex = $('#regexInput').val().trim();
+				let teststr = $('#testInput').val();
+				if (!regex) return;
+
+				$.ajax({
+					url: "/RegexDFA/regex_dfa.php",
+					method: "POST",
+					dataType: "json",
+					data: { regex: regex, teststr: teststr },
+					success: function(res) {
+						// Stats
+						$('#statsGrid').show();
+						$('#nfaStates').text(res.nfa.states);
+						$('#dfaStates').text(res.dfa.states.length);
+						$('#minStates').text(res.minDfa.states.length);
+
+						// Graphs
+						try {
+							$('#nfaGraph').html(Viz(res.nfa.dot, {format:"svg"}));
+							$('#dfaGraph').html(Viz(res.dfa.dot, {format:"svg"}));
+							$('#minGraph').html(Viz(res.minDfa.dot, {format:"svg"}));
+						} catch(e) {
+							console.error("Viz.js error:", e);
+						}
+
+						// NFA Transition Table
+						let nfaHtml = '';
+						res.nfa.transitions.forEach(t => {
+							nfaHtml += `<tr>
+								<td>${t.from}</td>
+								<td>${t.symbol === 'ε' ? '<em style="color:#9e9e9e;">ε</em>' : t.symbol}</td>
+								<td>${t.to}</td>
+							</tr>`;
+						});
+						$('#nfaTableBody').html(nfaHtml);
+
+						// DFA Table
+						$('#dfaTable').html(renderTable(res.dfa.table));
+						$('#minTable').html(renderTable(res.minDfa.table));
+
+						// Match result
+						if (teststr && teststr.length > 0) {
+							if (res.match.result) {
+								$('#matchResult').attr('class', 'match-result accepted')
+									.html('<i class="check circle icon"></i> ACCEPTED — String matches the regex');
+							} else {
+								$('#matchResult').attr('class', 'match-result rejected')
+									.html('<i class="times circle icon"></i> REJECTED — String does not match');
+							}
+
+							let matchHtml = '';
+							res.match.steps.forEach((step, i) => {
+								let isDead = step.nextState === 'DEAD';
+								matchHtml += `<tr class="${isDead ? 'negative' : ''}">
+									<td>${i + 1}</td>
+									<td><strong>${step.state}</strong></td>
+									<td>${step.remaining}</td>
+									<td><code>${step.symbol}</code></td>
+									<td>${isDead ? '<span style="color:red;">DEAD</span>' : '<strong>' + step.nextState + '</strong>'}</td>
+								</tr>`;
+							});
+							$('#matchTableBody').html(matchHtml);
+						} else {
+							$('#matchResult').attr('class', 'match-result empty')
+								.html('<i class="info circle icon"></i> No test string provided');
+							$('#matchTableBody').html('');
+						}
+					},
+					error: function(xhr, status, err) {
+						console.error("Error:", status, err, xhr.responseText);
+						$('#matchResult').attr('class', 'match-result rejected')
+							.html('<i class="exclamation triangle icon"></i> Error processing regex');
+					}
+				});
+			}
+
+			// Tab switching
+			$(document).on('click', '.custom-tab', function() {
+				let tab = $(this).data('tab');
+				let group = $(this).data('tabgroup') || 'main';
+
+				if (group === 'main') {
+					$('.custom-tabs:first .custom-tab').removeClass('active');
+					$(this).addClass('active');
+					$('#tab-nfa, #tab-dfa, #tab-min').removeClass('active');
+					$('#tab-' + tab).addClass('active');
+				} else {
+					$(this).closest('.custom-tabs').find('.custom-tab').removeClass('active');
+					$(this).addClass('active');
+					$(this).closest('.segment').find('.tab-content[id^="tab-table"]').removeClass('active');
+					$('#tab-' + tab).addClass('active');
+				}
+			});
+
+			$(document).ready(function() {
+				let samples = [
+					{ name: "(a|b)*abb — Ends with 'abb'", regex: "(a|b)*abb", test: "aabb" },
+					{ name: "a(b|c)*d — Starts 'a', ends 'd'", regex: "a(b|c)*d", test: "abcbd" },
+					{ name: "(0|1)*00 — Binary ending in 00", regex: "(0|1)*00", test: "1100" },
+					{ name: "ab?c — Optional 'b'", regex: "ab?c", test: "ac" },
+					{ name: "(ab)+c — One or more 'ab'", regex: "(ab)+c", test: "ababc" },
+					{ name: "a*b*c* — Zero or more of each", regex: "a*b*c*", test: "aabcc" },
+					{ name: "(a|b)(c|d) — Simple choices", regex: "(a|b)(c|d)", test: "ad" },
+					{ name: "a(a|b)*b — Starts 'a' ends 'b'", regex: "a(a|b)*b", test: "aabab" }
+				];
+
+				let options = samples.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
+				$('#selectRegex').html(options);
+
+				$('#selectRegex').on('change', function() {
+					let s = samples[$(this).val()];
+					$('#regexInput').val(s.regex);
+					$('#testInput').val(s.test);
+					update();
+				});
+
+				$('#submitBtn').on('click', function(e) {
+					e.preventDefault();
+					update();
+				});
+
+				$('#regexInput, #testInput').on('keypress', function(e) {
+					if (e.which === 13) update();
+				});
+
+				// Load first sample
+				$('#selectRegex').val(0).trigger('change');
+			});
+		</script>
+	</body>
+</html>
