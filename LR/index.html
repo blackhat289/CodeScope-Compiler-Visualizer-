@@ -1,0 +1,349 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>LR(1) Parser</title>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<link href="../node_modules/semantic-ui-css/semantic.min.css" rel="stylesheet">
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				background: #f5f7fa;
+				min-height: 100vh;
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			}
+			.page-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 1.5em 0;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+				margin-bottom: 2em;
+			}
+			.page-header h1 {
+				font-size: 2em;
+				font-weight: 700;
+				margin: 0;
+			}
+			.segment-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 0.8em 1.5em;
+				border-radius: 6px 6px 0 0;
+				font-weight: 600;
+				margin-bottom: 0;
+			}
+			.ui.segment {
+				border-radius: 8px;
+				border: none;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			}
+			.ui.button {
+				border-radius: 6px;
+				font-weight: 600;
+			}
+			.ui.positive.button {
+				background: linear-gradient(135deg, #0ba360 0%, #06985e 100%);
+				color: white;
+				border: none;
+			}
+			.ui.table {
+				border-radius: 6px;
+				margin-bottom: 0;
+				font-size: 0.85em;
+			}
+			.ui.table thead tr {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+			}
+			.ui.table thead th {
+				color: white !important;
+				font-weight: 600;
+				border-color: rgba(255,255,255,0.2);
+			}
+			.ui.table tbody tr:hover {
+				background-color: #f0f0f0;
+			}
+			.ui.form .field > label {
+				font-weight: 600;
+				color: #333;
+			}
+			input, textarea, select {
+				border-radius: 6px !important;
+				border: 1px solid #ddd !important;
+			}
+			input:focus, textarea:focus, select:focus {
+				border-color: #667eea !important;
+				box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+			}
+			textarea {
+				font-family: 'Courier New', monospace !important;
+			}
+			.scrollable {
+				max-height: 500px;
+				overflow-y: auto;
+				border-radius: 6px;
+			}
+			thead, tbody tr {
+				display: table;
+				width: 100%;
+				table-layout: fixed;
+			}
+			tbody {
+				display: block;
+				max-height: 550px;
+				overflow-y: scroll;
+			}
+			thead {
+				width: calc(100% - 1em);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page-header">
+			<h1><i class="project diagram icon"></i>LR(1) Parser Analyzer</h1>
+		</div>
+
+		<div class="ui container" style="margin-top: 2em;">
+			<div class="ui stacked segment" id="DFA">
+				<div class="segment-header">
+					<i class="share alternate icon"></i>DFA Graph Visualization
+				</div>
+
+				<div class="ui inverted dimmer">
+					<div class="ui text loader errorMsg"></div>
+				</div>
+
+				<div class="huge ui buttons fluid">
+					<button class="ui button" id="graphButton">
+						<i class="external alternate icon"></i>Open DFA Graph in New Window
+					</button>
+					<div class="or"></div>
+					<button class="ui positive button" id="graphDownload">
+						<i class="download icon"></i>Download DFA Graph
+					</button>
+				</div>
+
+				<div id="GraphAll" style="display:none"></div>
+				<div id="Graph" style="margin-top: 1em;"></div>
+			</div>
+
+			<!-- 3-Column Layout -->
+			<div class="ui three column stackable grid" style="margin-top: 2em;">
+				<!-- Column 1: Input & Grammar -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui stacked segment">
+						<div class="segment-header">
+							<i class="edit icon"></i>Input & Grammar
+						</div>
+						<div class="ui form">
+							<div class="field">
+								<label for="selectGrammar"><i class="list icon"></i>Sample Grammar</label>
+								<select class="ui dropdown fluid" id="selectGrammar"></select>
+							</div>
+
+							<div class="field">
+								<label for="indata"><i class="keyboard icon"></i>Input String</label>
+								<input type="text" id="indata" placeholder="Enter input string...">
+							</div>
+
+							<div class="field">
+								<label for="grammar"><i class="code icon"></i>Grammar Definition</label>
+								<textarea id="grammar" rows="6" placeholder="Enter grammar rules..."></textarea>
+							</div>
+
+							<button class="ui positive button" id="submitBtn" style="width: 100%; margin-top: 1em;">
+								<i class="play icon"></i>Parse
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Column 2: Grammar Productions & Parse Table -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui piled segment">
+						<div class="segment-header">
+							<i class="list ul icon"></i>Grammar Productions
+						</div>
+
+						<div class="ui inverted dimmer">
+							<div class="ui text loader errorMsg"></div>
+						</div>
+
+						<table class="ui selectable striped celled structured table">
+							<thead>
+								<tr class="center aligned">
+									<th class="three wide">ID</th>
+									<th>Production</th>
+								</tr>
+							</thead>
+							<tbody id="gmrb"></tbody>
+						</table>
+					</div>
+
+					<div class="ui piled segment" style="margin-top: 1em;">
+						<div class="segment-header">
+							<i class="table icon"></i>Parse Table (ACTION & GOTO)
+						</div>
+
+						<div class="ui inverted dimmer">
+							<div class="ui text loader errorMsg"></div>
+						</div>
+
+						<table class="ui selectable striped celled structured table">
+							<thead>
+								<tr id="pth1" class="center aligned"></tr>
+								<tr id="pth2" class="center aligned"></tr>
+							</thead>
+							<tbody id="ptb"></tbody>
+						</table>
+					</div>
+				</div>
+
+				<!-- Column 3: Parsing Steps -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui piled segment">
+						<div class="segment-header">
+							<i class="step forward icon"></i>Parsing Steps
+						</div>
+
+						<div class="ui inverted dimmer">
+							<div class="ui text loader errorMsg"></div>
+						</div>
+
+						<table class="ui stackable striped selectable celled table">
+							<thead>
+								<tr class="center aligned">
+									<th class="one wide">Step</th>
+									<th>State Stack</th>
+									<th>Parse Stack</th>
+									<th>Input</th>
+									<th>Action</th>
+								</tr>
+							</thead>
+							<tbody id="parser"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="../node_modules/semantic-ui-css/semantic.min.js"></script>
+		<script src="../node_modules/file-saver/FileSaver.min.js"></script>
+		<script src="../node_modules/viz.js/viz.js"></script>
+
+		<script>
+			function update(local) {
+				var data = $('#grammar').val() + '\n#\n' + $('#indata').val();
+
+				$.ajax({
+				url: "/LR/LR.php",
+					method: "POST",
+					dataType: "json",
+					data: {data: data},
+					success: function(res) {
+						$('.ui.dimmer').dimmer('hide');
+
+						if(!local) {
+							let gmrb = '';
+							res.Grammar.forEach((g,i)=>{
+								gmrb += `<tr class="center aligned"><td>${i}</td><td>${g}</td></tr>`;
+							});
+							$('#gmrb').html(gmrb);
+
+							let pth1 = `<th rowspan="2">State</th>
+								<th colspan=${res.parseTable.Vt.length}>ACTION</th>
+								<th colspan=${res.parseTable.Vn.length}>GOTO</th>`;
+
+							let pth2 = '';
+							res.parseTable.Vt.forEach(v=>pth2+=`<th>${v}</th>`);
+							res.parseTable.Vn.forEach(v=>pth2+=`<th>${v}</th>`);
+
+							let ptb = '';
+							res.parseTable.Body.forEach((row,i)=>{
+								ptb += `<tr><td>${i}</td>`;
+								row.forEach(cell=>ptb+=`<td>${cell}</td>`);
+								ptb += `</tr>`;
+							});
+
+							$('#pth1').html(pth1);
+							$('#pth2').html(pth2);
+							$('#ptb').html(ptb);
+						}
+
+						let parser = '';
+						res.parser.forEach((row,i)=>{
+							parser += `<tr class="${row.action==="ERROR"?"negative":""}">
+								<td>${i}</td>
+								<td>${row.statusStack}</td>
+								<td>${row.parseStack}</td>
+								<td>${row.inStrStack}</td>
+								<td>${row.action}</td>
+							</tr>`;
+						});
+						$('#parser').html(parser);
+
+						if(!local) {
+							$('#GraphAll').html(Viz(res.Graph.All,{format:"svg"}));
+							$('#Graph').html(Viz(res.Graph.Simple,{format:"svg"}));
+						}
+					},
+					error:function(){
+						$('.errorMsg').text('Invalid grammar or input');
+						$('.ui.dimmer').dimmer('show');
+					}
+				});
+			}
+
+			$("#indata").on("keyup paste",()=>update(true));
+			$("#grammar").on("keyup paste",()=>update(false));
+
+			$('#graphButton').click(()=>{
+				let w = window.open("", "DFA Graph");
+				w.document.write($('#GraphAll').html());
+			});
+
+			$('#graphDownload').click(()=>{
+				let blob = new Blob([$('#GraphAll').html()],{type:"text/plain"});
+				saveAs(blob,"LR1_DFA.svg");
+			});
+
+			$(document).ready(function() {
+				let inputs = [
+					"i*i+i*(i+i)*i-i+i/(i*i)*i",
+					"i+i*i",
+					"a*(a+a*a)",
+					"aaaabbbbaaaabbbb"
+				];
+
+				let grammars = [
+					"E->TG\nG->+TG|-TG\nG->@\nT->FS\nS->*FS|/FS\nS->@\nF->(E)\nF->i",
+					"E->E+T\nE->T\nT->T*F\nT->F\nF->(E)\nF->i",
+					"E->E+E|E*E|(E)|a",
+					"S->aBS|bAS|@\nA->bAA|a\nB->aBB|b"
+				];
+
+				let options = grammars.map((_,i)=>`<option value=${i}>Grammar ${i}</option>`).join('');
+				$('#selectGrammar').html(options);
+
+				$('#selectGrammar').val(0);
+				$('#indata').val(inputs[0]);
+				$('#grammar').val(grammars[0]);
+				update(false);
+
+				$("#submitBtn").on("click",()=>update(false));
+
+				$('#selectGrammar').dropdown();
+				$('#selectGrammar').on('change', function() {
+					let idx = $(this).val();
+					$('#indata').val(inputs[idx]);
+					$('#grammar').val(grammars[idx]);
+					update(false);
+				});
+			});
+		</script>
+	</body>
+</html>

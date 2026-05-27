@@ -1,0 +1,211 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Lexical Analyzer</title>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<link href="../node_modules/semantic-ui-css/semantic.min.css" rel="stylesheet">
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				background: #f5f7fa;
+				min-height: 100vh;
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			}
+			.page-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 1.5em 0;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+				margin-bottom: 2em;
+			}
+			.page-header h1 {
+				font-size: 2em;
+				font-weight: 700;
+				margin: 0;
+			}
+			.segment-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 0.8em 1.5em;
+				border-radius: 6px 6px 0 0;
+				font-weight: 600;
+				margin-bottom: 0;
+			}
+			.ui.segment {
+				border-radius: 8px;
+				border: none;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			}
+			.ui.table {
+				border-radius: 6px;
+				margin-bottom: 0;
+				font-size: 0.85em;
+			}
+			.ui.table thead th {
+				color: white !important;
+				font-weight: 600;
+				border-color: rgba(255,255,255,0.2);
+			}
+			.ui.table tbody tr:hover {
+				background-color: #f0f0f0;
+			}
+			textarea {
+				border-radius: 6px !important;
+				border: 1px solid #ddd !important;
+				font-family: 'Courier New', monospace !important;
+			}
+			textarea:focus {
+				border-color: #667eea !important;
+				box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+			}
+			.outmaxh {
+				max-height: 550px;
+				overflow-y: auto;
+				border-radius: 6px;
+			}
+			.tokenmaxh {
+				max-height: 300px;
+				overflow-y: auto;
+				padding: 1em;
+				background: white;
+				border-radius: 6px;
+			}
+			.tokenmaxh a {
+				margin: 0.3em;
+				cursor: pointer;
+			}
+			@media (max-width: 1200px) {
+				.ui.grid > .column {
+					flex-basis: 100% !important;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="page-header">
+			<div class="ui container">
+				<h1 style="margin: 0;"><i class="microchip icon"></i>Lexical Analyzer</h1>
+			</div>
+		</div>
+
+		<div class="ui container" style="padding: 0 1em;">
+			<div class="ui two column stackable grid" style="margin: 0;">
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment" style="margin-bottom: 1.5em;">
+						<div class="segment-header">
+							<i class="keyboard icon"></i>Source Code
+						</div>
+						<div style="padding: 1.5em;">
+							<textarea id="indata" rows="12" placeholder="Enter your C code here..."></textarea>
+							<button class="ui primary button" id="analyzeBtn" style="width: 100%; margin-top: 1em; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; font-weight: 600;">
+								<i class="play icon"></i>Analyze Code
+							</button>
+						</div>
+					</div>
+					<div class="ui segment">
+						<div class="segment-header">
+							<i class="code icon"></i>Tokens
+						</div>
+						<div style="padding: 1.5em; height: 300px; overflow-y: auto;">
+							<div id="token" style="direction: ltr;"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment">
+						<div class="segment-header">
+							<i class="list icon"></i>Analysis Output
+						</div>
+						<div style="padding: 1.5em;">
+							<div class="outmaxh">
+								<table class="ui very compact striped table">
+									<thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: sticky; top: 0;">
+										<tr>
+											<th style="color: white;">#</th>
+											<th style="color: white;">Token</th>
+											<th style="color: white;">Type</th>
+											<th style="color: white;">Pos</th>
+										</tr>
+									</thead>
+									<tbody id="out"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="../node_modules/semantic-ui-css/semantic.min.js"></script>
+		<script>
+			function update() {
+				var color = [
+					'red','blue','grey','purple','violet','pink','teal','orange','orange','brown'
+				];
+				var inputValue = $('#indata').val();
+				console.log("Input value:", JSON.stringify(inputValue));
+				console.log("Input length:", inputValue.length);
+				if (!inputValue.trim()) {
+					console.warn("Input is empty!");
+				}
+				console.log("Update called, sending data...");
+				$.ajax({
+					url: "/Lexical/lexical.php",
+					dataType: "json",
+					method: "POST",
+					data: {indata: inputValue},
+					success: function(data) {
+						console.log("Success! Data received:", data);
+						var first = 0;
+						var lastrow = 0;
+						var token = '';
+						var out = '';
+						for(var i=0, len=data.length; i!=len; ++i) {
+							var entry = data[i];
+							if(lastrow != entry['pos'][0])
+								token += '<hr><a class="tiny ui basic circular label">#' + entry['pos'][0] + '</a>';
+							token +='<a class="tiny ui ' + color[entry['tuple'][0]] + ' label" data-html="'+
+								'<a class=\'ui '+ color[entry['tuple'][0]] +' top attached label\'>Token Info</a><br>' +
+								"Type: " + entry['type'] + "<br>Pointer: " + entry['tuple'][1] + "<br>Position: (" + entry['pos'][0] + ', ' + entry['pos'][1] + ')'
+								+'">' + entry['word'] + '</a>';
+							out += "<tr class='"+ (entry["type"] == "ERROR"?"negative":"") +"'><td>"+first+"</td><td>"+entry["word"]+
+								"</td><td>"+entry["type"] + "</td><td>(" + entry["pos"][0] + ", " + entry["pos"][1] + ")</td></tr>";
+							++first;
+							lastrow = entry['pos'][0];
+						}
+						$('#token').html(token);
+						$('#out').html(out);
+						$('#token a').popup();
+					},
+					error: function(jqXHR, textStatus, errorThrown) {
+						console.error("Error analyzing code:", textStatus, errorThrown);
+						console.error("Response:", jqXHR.responseText);
+					}
+				});
+			}
+			
+			$(document).ready(function() {
+				console.log("Page ready, binding events...");
+				$('#analyzeBtn').on('click', function(e) {
+					e.preventDefault();
+					console.log("Analyze button clicked!");
+					update();
+				});
+				$('textarea').on('keyup paste', update);
+				$('textarea').val(
+					"int a = 2, b = 3;\n" +
+					'"this isn\'t a string\n'+
+					'// this is a comment\n'+
+					'printf("c=%d\\n", (a+b)/2);'
+				);
+				update();
+			});
+		</script>
+	</body>
+</html>

@@ -1,0 +1,340 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>LL(1) Parser</title>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<link href="../node_modules/semantic-ui-css/semantic.min.css" rel="stylesheet">
+		<link href="../node_modules/treant-js/Treant.css" rel="stylesheet">
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				background: #f5f7fa;
+				min-height: 100vh;
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			}
+			.page-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 1.5em 0;
+				box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+				margin-bottom: 2em;
+			}
+			.page-header h1 {
+				font-size: 2em;
+				font-weight: 700;
+				margin: 0;
+			}
+			.segment-header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 0.8em 1.5em;
+				border-radius: 6px 6px 0 0;
+				font-weight: 600;
+				margin-bottom: 0;
+			}
+			.ui.segment {
+				border-radius: 8px;
+				border: none;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+			}
+			.ui.table {
+				border-radius: 6px;
+				margin-bottom: 0;
+				font-size: 0.9em;
+			}
+			.ui.table thead tr {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+			}
+			.ui.table thead th {
+				color: white !important;
+				font-weight: 600;
+				border-color: rgba(255,255,255,0.2);
+			}
+			.ui.table tbody tr:hover {
+				background-color: #f0f0f0;
+			}
+			.ui.form .field > label {
+				font-weight: 600;
+				color: #333;
+			}
+			input[type="text"], textarea {
+				border-radius: 6px !important;
+				border: 1px solid #ddd !important;
+			}
+			input[type="text"]:focus, textarea:focus {
+				border-color: #667eea !important;
+				box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+			}
+			textarea {
+				font-family: 'Courier New', monospace !important;
+			}
+			.node-name { font-weight: bold; }
+			.scrollable-table {
+				max-height: 350px;
+				overflow-y: auto;
+				border-radius: 6px;
+			}
+			.scrollable-table::-webkit-scrollbar {
+				width: 6px;
+			}
+			.scrollable-table::-webkit-scrollbar-track {
+				background: #f1f1f1;
+				border-radius: 3px;
+			}
+			.scrollable-table::-webkit-scrollbar-thumb {
+				background: #bbb;
+				border-radius: 3px;
+			}
+			.scrollable-table::-webkit-scrollbar-thumb:hover {
+				background: #888;
+			}
+			#parserTree {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 50px 1em 1em 1em;
+    min-height: 700px;
+    max-height: 900px;
+    overflow: auto;
+    position: relative;
+}
+		</style>
+	</head>
+	<body>
+		<div class="page-header">
+			<div class="ui container">
+				<h1 style="margin: 0;"><i class="sitemap icon"></i>LL(1) Parser</h1>
+			</div>
+		</div>
+
+		<div class="ui container" style="padding: 0 1em;">
+			<!-- Parse Tree -->
+			<div class="ui segment" style="margin-bottom: 2em;">
+				<div class="segment-header">
+					<i class="project diagram icon"></i>Parse Tree
+				</div>
+				<div style="padding: 1.5em; overflow: auto;">
+					<div id="parserTree"></div>
+				</div>
+			</div>
+
+			<!-- Three Column Layout -->
+			<div class="ui three column stackable grid" style="margin: 0;">
+				<!-- Column 1: Input -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment">
+						<div class="segment-header">
+							<i class="edit icon"></i>Input
+						</div>
+						<div style="padding: 1.5em;">
+							<div class="ui form">
+								<div class="field">
+									<label>Input String</label>
+									<input type="text" id="indata" placeholder="e.g., i*i+i">
+								</div>
+								<div class="field">
+									<label>Grammar</label>
+									<textarea id="grammar" rows="10" placeholder="E->TG..."></textarea>
+								</div>
+								<button class="ui positive button" id="submitBtn" style="width: 100%; margin-top: 1em;">
+									<i class="play icon"></i>Parse
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Column 2: Analysis -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment" style="margin-bottom: 1.5em;">
+						<div class="segment-header">
+							<i class="layer group icon"></i>FIRST & FOLLOW
+						</div>
+						<div style="padding: 1.5em;">
+							<div class="scrollable-table">
+								<table class="ui very compact striped table">
+									<thead>
+										<tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: sticky; top: 0;">
+											<th style="color: white;">Symbol</th>
+											<th style="color: white;">FIRST</th>
+											<th style="color: white;">FOLLOW</th>
+										</tr>
+									</thead>
+									<tbody id="ff"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+
+					<div class="ui segment">
+						<div class="segment-header">
+							<i class="table icon"></i>Parse Table
+						</div>
+						<div style="padding: 1.5em;">
+							<div class="scrollable-table">
+								<table class="ui very compact striped table">
+									<thead id="pth"></thead>
+									<tbody id="ptb"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Column 3: Parsing Steps -->
+				<div class="column" style="padding: 1em;">
+					<div class="ui segment">
+						<div class="segment-header">
+							<i class="step forward icon"></i>Parsing Steps
+						</div>
+						<div style="padding: 1.5em;">
+							<div style="max-height: 700px; overflow-y: auto;">
+								<table class="ui very compact striped table">
+									<thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: sticky; top: 0;">
+										<tr>
+											<th style="color: white;">Step</th>
+											<th style="color: white;">Stack</th>
+											<th style="color: white;">Input</th>
+											<th style="color: white;">Action</th>
+										</tr>
+									</thead>
+									<tbody id="parser"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="../node_modules/semantic-ui-css/semantic.min.js"></script>
+		<script src="../node_modules/treant-js/vendor/raphael.js"></script>
+		<script src="../node_modules/treant-js/Treant.js"></script>
+
+		<script>
+			function buildTree(node, production) {
+				var p = production.match(/([A-Z])->(.*)/);
+				var left = p[1], right = p[2];
+
+				if(!node.text) {
+					node.text = { name: left };
+					node.children = [];
+					for(var i=0;i<right.length;i++)
+						node.children.push({text:{name:right[i]}});
+					return true;
+				}
+
+				if(node.text.name != left) {
+					if(node.children)
+						for(var i=0;i<node.children.length;i++)
+							if(buildTree(node.children[i], production)) return true;
+				} else {
+					if(!node.children) {
+						node.children = [];
+						for(var i=0;i<right.length;i++)
+							node.children.push({text:{name:right[i]}});
+						return true;
+					} else {
+						for(var i=0;i<node.children.length;i++)
+							if(buildTree(node.children[i], production)) return true;
+					}
+				}
+			}
+
+			function update(local) {
+				var input = $('#grammar').val() + '\n#\n' + $('#indata').val();
+
+				$.ajax({
+				url: "/LL1/LL1.php",
+					method: "POST",
+					dataType: "json",
+					data: {data: input},
+					success: function(res) {
+						$('.ui.dimmer').dimmer('hide');
+
+						if(!local && res.FIRST && res.FIRST.length) {
+							var ff = '';
+							for(var i=0;i<res.FIRST.length;i++) {
+								ff += '<tr><td>'+res.FIRST[i].noTerminal+'</td><td>{'+res.FIRST[i].Terminal.join(', ')+'}</td><td>{'+res.FOLLOW[i].Terminal.join(', ')+'}</td></tr>';
+							}
+							$('#ff').html(ff);
+
+							var header = '<tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: sticky; top: 0;"><th style="color: white;"></th>';
+							res.Table.Header.forEach(h=>header+='<th style="color: white;">'+h+'</th>');
+							header += '</tr>';
+							$('#pth').html(header);
+
+							var body = '';
+							res.Table.Body.forEach(r=>{
+								body += '<tr><td>'+r.noTerminal+'</td>';
+								r.production.forEach(p=>body+='<td>'+p+'</td>');
+								body += '</tr>';
+							});
+							$('#ptb').html(body);
+						}
+
+						var parser = '';
+						var tree = {
+    chart: {
+        container: "#parserTree",
+        rootOrientation: "NORTH",
+        nodeAlign: "TOP",
+        levelSeparation: 40,
+        padding: 50
+    },
+    nodeStructure: {}
+};
+
+						if(res.Parser && res.Parser.length) {
+							for(var i=0;i<res.Parser.length;i++) {
+								var row = res.Parser[i];
+								var prod = res.Parser[(i+1)%res.Parser.length].production;
+
+								if(!/match/.test(prod) && prod && prod!="ERROR")
+									buildTree(tree.nodeStructure, prod);
+
+								parser += '<tr><td>'+i+'</td><td>'+row.parseStack+'</td><td>'+row.indataStack+'</td><td>'+prod+'</td></tr>';
+							}
+						}
+
+						$('#parser').html(parser);
+						$('#parserTree').html("");
+						if(parser) {
+    Treant(tree);
+
+    setTimeout(() => {
+        $('#parserTree').scrollTop(0);
+        $('#parserTree').scrollLeft(0);
+    }, 100);
+}
+					},
+					error:function(xhr, status, error){
+						console.error("AJAX Error:", status, error);
+						console.error("Response:", xhr.responseText);
+						$('.ui.dimmer').dimmer('show');
+					}
+				});
+			}
+
+			$("#indata").on("keyup paste",()=>update(true));
+			$("#grammar").on("keyup paste",()=>update(false));
+
+			$(document).ready(function() {
+				$("#submitBtn").on("click",()=>update(false));
+				
+				$('#indata').val('i*i+i*(i+i)*i-i+i/(i*i)*i');
+				$('#grammar').val(
+					"E->TG\nG->+TG|-TG\nG->@\nT->FS\nS->*FS|/FS\nS->@\nF->(E)\nF->i"
+				);
+				update(false);
+			});
+		</script>
+
+	</body>
+</html>
